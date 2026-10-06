@@ -34,6 +34,12 @@ import {
 } from "./types";
 
 export async function scanProject(options: ScanOptions): Promise<ScanReport> {
+  const provider = resolveProvider(options.provider);
+  options = {
+    ...options,
+    provider,
+    model: resolveModel(provider, options.model),
+  };
   const root = path.resolve(options.root);
   const checks = options.checks ?? listChecks();
   const thresholds = { ...DEFAULT_THRESHOLDS, ...options.thresholds };
@@ -340,7 +346,25 @@ function reasonText(check: SemanticCheck, reasonId: string | undefined, primaryI
 }
 
 export function createAsker(options: { provider?: "typesafe" | "openai"; apiKey?: string; baseURL?: string; timeout?: number } = {}): JevAsker {
-  if (options.provider === "openai") return createDecisionsAsker(options);
-  if (options.provider && options.provider !== "typesafe") throw new Error("Unsupported scan provider");
-  return createJevAsker(options);
+  const provider = resolveProvider(options.provider);
+  const asker = provider === "openai" ? createDecisionsAsker(options) : createJevAsker(options);
+  return {
+    ask(state, questions, model) {
+      return asker.ask(state, questions, resolveModel(provider, model));
+    },
+  };
+}
+
+function resolveModel(provider: "typesafe" | "openai", explicit?: string): string {
+  return explicit ?? (process.env.IS_MALICIOUS_MODEL?.trim() ||
+    (provider === "openai" ? process.env.OPENAI_DEFAULT_MODEL?.trim() : process.env.TYPESAFE_DEFAULT_MODEL?.trim()) ||
+    (provider === "openai" ? OPENAI_DECISIONS_MODEL : "jev-latest"));
+}
+
+function resolveProvider(explicit?: "typesafe" | "openai"): "typesafe" | "openai" {
+  const provider = explicit ?? (process.env.IS_MALICIOUS_PROVIDER?.trim() || "typesafe");
+  if (provider !== "typesafe" && provider !== "openai") {
+    throw new Error("Unsupported scan provider; IS_MALICIOUS_PROVIDER must be typesafe or openai");
+  }
+  return provider;
 }

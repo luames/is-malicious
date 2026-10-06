@@ -37,11 +37,20 @@ This uses [`POST /v1/decisions`](https://developers.openai.com/api/docs/guides/d
 
 `OPENAI_BASE_URL` or `--base-url` can override the OpenAI API root. Roots with or without `/v1` are accepted; the flag takes precedence. OpenAI mode does not use TypeSafe credentials or environment settings. File contents go to the selected endpoint. The report includes token usage but leaves cost unknown, since regional and long-context pricing can vary.
 
-### Codex subscriptions
+## Environment configuration
 
-Codex subscription login is not a replacement for a Platform API key on the Decisions endpoint. [OpenAI's authentication documentation](https://developers.openai.com/codex/auth) reserves general API calls for Platform API keys.
+Provider and model selection work through environment variables in the CLI, skill wrapper, and public library:
 
-Mosaik's `openai-codex` integration uses ChatGPT OAuth through `@earendil-works/pi-ai` and the separate `https://chatgpt.com/backend-api/codex/responses` endpoint. A subscription-backed scanner is technically feasible as a separate Responses adapter using the same login and refresh machinery. It would need to generate and validate the scanner's answer object, and its model-generated probabilities would not be equivalent to Decisions probabilities. This CLI does not implement that adapter or read Mosaik credentials.
+```bash
+export IS_MALICIOUS_PROVIDER=openai
+export IS_MALICIOUS_MODEL=gpt-6-luna
+export OPENAI_API_KEY=your-openai-platform-key
+is-malicious /path/to/project
+```
+
+`--provider` or `ScanOptions.provider` overrides `IS_MALICIOUS_PROVIDER`. If neither is set, the provider remains `typesafe`. Invalid provider values fail before sending any files.
+
+Model precedence is `--model` or the explicit library model, then `IS_MALICIOUS_MODEL`, then the selected provider's `TYPESAFE_DEFAULT_MODEL` or `OPENAI_DEFAULT_MODEL`, then `jev-latest` or `gpt-6-luna`. Empty or whitespace-only environment values are ignored. Both scan passes use the resolved model. Provider-specific credentials, API roots, and model defaults stay isolated.
 
 ## Global installation
 
@@ -143,7 +152,7 @@ Or install it globally:
 npx skills add -g luantak/is-malicious
 ```
 
-The agent runs `npx is-malicious`, so `TYPESAFE_API_KEY` must be set in its environment. See the [skills CLI docs](https://www.skills.sh/docs) for listing, updating, and removing skills.
+The agent runs `npx is-malicious`. Set `TYPESAFE_API_KEY`, or select OpenAI with `IS_MALICIOUS_PROVIDER=openai` and set `OPENAI_API_KEY`. The same environment settings work with the skill wrapper. See the [skills CLI docs](https://www.skills.sh/docs) for listing, updating, and removing skills.
 
 ## How a scan works
 

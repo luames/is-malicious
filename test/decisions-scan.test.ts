@@ -134,6 +134,14 @@ it("routes both scan passes and the CLI through Decisions and fails closed on re
     expect(JSON.parse(String(output.mock.calls.at(-1)?.[0])).skipped).toEqual(
       [],
     );
+    vi.stubEnv("IS_MALICIOUS_PROVIDER", "openai");
+    vi.stubEnv("IS_MALICIOUS_MODEL", "env-model");
+    expect(await main([root, "--json"])).toBe(1);
+    expect(requests.slice(-report.chunks * 2).every((r) => r.model === "env-model")).toBe(true);
+    expect(JSON.parse(String(output.mock.calls.at(-1)?.[0])).usage.billedUsd).toBeNull();
+    vi.stubEnv("IS_MALICIOUS_PROVIDER", "invalid");
+    expect(await main([root, "--provider", "openai", "--model", "flag-model", "--json"])).toBe(1);
+    expect(requests.slice(-report.chunks * 2).every((r) => r.model === "flag-model")).toBe(true);
     refuse = true;
     expect(await main([root, "--provider", "openai", "--json"])).toBe(2);
     expect(

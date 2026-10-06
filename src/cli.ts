@@ -91,6 +91,10 @@ function usage(): string {
     "",
     "Set TYPESAFE_API_KEY in the environment. TYPESAFE_BASE_URL also sets the API root.",
     "For openai, set OPENAI_API_KEY; OPENAI_BASE_URL optionally sets the API root.",
+    "IS_MALICIOUS_PROVIDER selects typesafe or openai when --provider is omitted.",
+    "IS_MALICIOUS_MODEL sets the model when --model is omitted, then",
+    "TYPESAFE_DEFAULT_MODEL or OPENAI_DEFAULT_MODEL supplies the provider default.",
+    "Explicit flags take precedence over environment variables.",
   ].join("\n");
 }
 
