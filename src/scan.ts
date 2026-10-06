@@ -1,4 +1,5 @@
 import path from "node:path";
+import { createDecisionsAsker, OPENAI_DECISIONS_MODEL } from "./decisions";
 import { listChecks, type SemanticCheck } from "./checks";
 import { DEFAULT_MAX_CHUNK_CHARS, excerpt, groupFiles, locateWindows, splitForRetry } from "./chunk";
 import { listChangedPaths, pathFilter } from "./diff";
@@ -36,9 +37,9 @@ export async function scanProject(options: ScanOptions): Promise<ScanReport> {
   const root = path.resolve(options.root);
   const checks = options.checks ?? listChecks();
   const thresholds = { ...DEFAULT_THRESHOLDS, ...options.thresholds };
-  const ask = options.ask ?? createJevAsker({ apiKey: options.apiKey, baseURL: options.baseURL });
+  const ask = options.ask ?? createAsker(options);
   const baseURL = options.baseURL?.trim() || process.env.TYPESAFE_BASE_URL?.trim();
-  const isTypeSafeEndpoint = !baseURL || baseURL.replace(/\/+$/, "") === "https://api.typesafe.ai";
+  const isTypeSafeEndpoint = options.provider !== "openai" && (!baseURL || baseURL.replace(/\/+$/, "") === "https://api.typesafe.ai");
   const discovered = await discoverFiles(root);
   let files = options.fileFilter ? discovered.filter(options.fileFilter) : discovered;
   if (options.diffFrom) {
@@ -52,7 +53,7 @@ export async function scanProject(options: ScanOptions): Promise<ScanReport> {
   const categoryScores: ScanReport["categoryScores"] = [];
   const skipped: ScanReport["skipped"] = [];
   let escalated = 0;
-  let model = options.model ?? "jev-latest";
+  let model = options.model ?? (options.provider === "openai" ? OPENAI_DECISIONS_MODEL : "jev-latest");
   let requests = 0;
   let inputTokens = 0;
   let outputTokens = 0;
@@ -338,6 +339,8 @@ function reasonText(check: SemanticCheck, reasonId: string | undefined, primaryI
   return check.label;
 }
 
-export function createAsker(options?: { apiKey?: string; baseURL?: string; timeout?: number }): JevAsker {
+export function createAsker(options: { provider?: "typesafe" | "openai"; apiKey?: string; baseURL?: string; timeout?: number } = {}): JevAsker {
+  if (options.provider === "openai") return createDecisionsAsker(options);
+  if (options.provider && options.provider !== "typesafe") throw new Error("Unsupported scan provider");
   return createJevAsker(options);
 }

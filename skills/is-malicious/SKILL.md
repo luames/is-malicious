@@ -37,6 +37,8 @@ The script prints the human report on stdout. Exit code 1 means at least one hig
 
 Needs `TYPESAFE_API_KEY`. For a TypeSafe-compatible provider, set `TYPESAFE_BASE_URL` and `TYPESAFE_DEFAULT_MODEL` as needed. Optional: `IS_MALICIOUS_ROOT` for a local checkout.
 
+For OpenAI Decisions, run `npx --yes is-malicious <path> --provider openai` directly with `OPENAI_API_KEY` set. `OPENAI_BASE_URL` optionally selects its API root. The wrapper above is TypeSafe-only. Codex subscription credentials do not authorize the Decisions API.
+
 Do not pass `--json` unless the user asked for machine output.
 
 ## After the report

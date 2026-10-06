@@ -1,6 +1,6 @@
 # is-malicious?
 
-Scan a codebase for hidden, deceptive, or data-stealing behavior with TypeSafe Jev. The CLI sends source, configuration, build, and CI files to Jev for review, then points you to suspicious files and lines.
+Scan a codebase for hidden, deceptive, or data-stealing behavior with TypeSafe Jev or OpenAI Decisions. The CLI sends source, configuration, build, and CI files to the selected provider for review, then points you to suspicious files and lines.
 
 Use it as a second opinion before running unfamiliar code. A clean report is not proof that a project is safe.
 
@@ -24,7 +24,26 @@ is-malicious /path/to/project --base-url http://localhost:8000 --model your-mode
 
 The API root can also come from `TYPESAFE_BASE_URL`; `--base-url` takes precedence. The service must accept `POST /v1/systemone` with TypeSafe's `state`, `model`, and typed `questions` request and return matching `answers` and `usage`. The CLI reports token counts for other providers but leaves cost unknown because their prices vary. File contents go to the configured endpoint. Model quality and scan accuracy depend on the provider.
 
-To install the CLI globally:
+## OpenAI Decisions
+
+Select OpenAI explicitly, leaving existing TypeSafe commands unchanged:
+
+```bash
+export OPENAI_API_KEY=your-openai-platform-key
+is-malicious /path/to/project --provider openai
+```
+
+This uses [`POST /v1/decisions`](https://developers.openai.com/api/docs/guides/decisions) with `gpt-6-luna`, currently the only supported Decisions model. Both scan passes translate the same checks into predicate, choice, and score questions. Source context is serialized as JSON text. Missing, refused, or malformed answers mark the chunk as skipped and produce exit code `2` rather than a clean report.
+
+`OPENAI_BASE_URL` or `--base-url` can override the OpenAI API root. Roots with or without `/v1` are accepted; the flag takes precedence. OpenAI mode does not use TypeSafe credentials or environment settings. File contents go to the selected endpoint. The report includes token usage but leaves cost unknown, since regional and long-context pricing can vary.
+
+### Codex subscriptions
+
+Codex subscription login is not a replacement for a Platform API key on the Decisions endpoint. [OpenAI's authentication documentation](https://developers.openai.com/codex/auth) reserves general API calls for Platform API keys.
+
+Mosaik's `openai-codex` integration uses ChatGPT OAuth through `@earendil-works/pi-ai` and the separate `https://chatgpt.com/backend-api/codex/responses` endpoint. A subscription-backed scanner is technically feasible as a separate Responses adapter using the same login and refresh machinery. It would need to generate and validate the scanner's answer object, and its model-generated probabilities would not be equivalent to Decisions probabilities. This CLI does not implement that adapter or read Mosaik credentials.
+
+## Global installation
 
 ```bash
 npm install -g is-malicious
@@ -147,8 +166,9 @@ is-malicious [path] [options]
 | Option | What it does | Default |
 | --- | --- | --- |
 | `--json` | Print the full report as JSON | Off |
-| `--model <name>` | Choose a Jev model | `jev-latest` |
-| `--base-url <url>` | Use a TypeSafe-compatible API root | `https://api.typesafe.ai` |
+| `--provider <name>` | Select `typesafe` or `openai` | `typesafe` |
+| `--model <name>` | Choose a provider model | `jev-latest` or `gpt-6-luna` |
+| `--base-url <url>` | Set the selected provider's API root | `https://api.typesafe.ai` or `https://api.openai.com/v1` |
 | `--concurrency <n>` | Set the number of parallel chunk requests | `12` |
 | `--min-prob <n>` | Set the minimum category probability to report | `0.40` |
 | `--diff-from <ref>` | Scan only files changed since a Git ref | Scan all eligible files |
